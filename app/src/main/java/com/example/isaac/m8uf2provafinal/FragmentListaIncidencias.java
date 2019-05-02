@@ -1,12 +1,25 @@
 package com.example.isaac.m8uf2provafinal;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import com.google.firebase.database.ChildEventListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+
+import java.util.ArrayList;
 
 
 /**
@@ -28,6 +41,15 @@ public class FragmentListaIncidencias extends Fragment {
     private String mParam2;
 
     private OnFragmentInteractionListener mListener;
+
+    RecyclerView recyclerView;
+    ArrayList<ImageUploadInfo> mylist;
+    public static FirebaseStorage firebaseStorage;
+    public static Bitmap bitmap;
+    public static FirebaseDatabase firebaseDatabase;
+    public static recyclerAdapter adapter;
+
+
 
     public FragmentListaIncidencias() {
         // Required empty public constructor
@@ -63,8 +85,48 @@ public class FragmentListaIncidencias extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
         // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_lista_incidencias, container, false);
+        View view = inflater.inflate(R.layout.fragment_lista_incidencias, container, false);
+
+        mylist = new ArrayList<>();
+        recyclerView = (RecyclerView) view.findViewById(R.id.recyclerId);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        //llenarLista();
+        adapter = new recyclerAdapter(mylist);
+        recyclerView.setAdapter(adapter);
+        firebaseDatabase = FirebaseDatabase.getInstance();
+
+        firebaseDatabase.getReference().child("images").addChildEventListener(new ChildEventListener() { // Añadir el child para cada elemento hijo del padre (musicplayer-97ddf) algo así
+            // En este caso es /songs/ y de ahi ya se cogen todos los hijos
+            @Override
+            public void onChildAdded(@NonNull DataSnapshot dataSnapshot, @Nullable String s) { // Leer de Firebase
+                ImageUploadInfo incidencia;
+
+                incidencia = dataSnapshot.getValue(ImageUploadInfo.class);
+
+                mylist.add(incidencia);
+                adapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {}
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot dataSnapshot) {}
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot dataSnapshot, @Nullable String s) {}
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {}
+        });
+
+        // Generar instacia que apunta mi Firebase Storage
+        firebaseStorage = FirebaseStorage.getInstance();
+
+        return view;
     }
 
     // TODO: Rename method, update argument and hook method into UI event

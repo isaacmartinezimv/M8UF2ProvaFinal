@@ -1,12 +1,38 @@
 package com.example.isaac.m8uf2provafinal;
 
+import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.pm.ActivityInfo;
+import android.graphics.Bitmap;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.Toast;
+
+import com.google.android.gms.tasks.OnFailureListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.OnProgressListener;
+import com.google.firebase.storage.StorageReference;
+import com.google.firebase.storage.UploadTask;
+
+import java.io.IOException;
+import java.util.UUID;
 
 
 /**
@@ -22,6 +48,27 @@ public class FragmentReportarIncidencia extends Fragment {
     // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
     private static final String ARG_PARAM1 = "param1";
     private static final String ARG_PARAM2 = "param2";
+
+    //declaracion de variables
+    ImageButton takePicture;
+    Button uploadPicture;
+    ImageView imageView;
+    EditText editText, editTextLocation;
+
+    private String [] permissions = {"android.permission.WRITE_EXTERNAL_STORAGE"};
+
+    //Declaramos las variables necesarias para Firebase
+    FirebaseStorage storage;
+    StorageReference storageReference;
+
+    //Firebase Database
+    FirebaseDatabase database;
+    DatabaseReference databaseReference;
+    String databasePath = "images";
+
+    private Uri filePath;
+    private final int PICK_IMAGE_REQUEST = 71;
+
 
     // TODO: Rename and change types of parameters
     private String mParam1;
@@ -58,13 +105,117 @@ public class FragmentReportarIncidencia extends Fragment {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
         }
+
+        //Pedimos permisos necesarios
+        int requestCode = 200;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            requestPermissions(permissions, requestCode);
+        }
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_reportar_incidencia, container, false);
+        View view = inflater.inflate(R.layout.fragment_reportar_incidencia, container, false);
+        takePicture = view.findViewById(R.id.takePictureButton);
+        uploadPicture = view.findViewById(R.id.uploadImageButton);
+        imageView = view.findViewById(R.id.imageView);
+        editText = view.findViewById(R.id.userPictureName);
+        editTextLocation = view.findViewById(R.id.userPicturePlace);
+
+        //generamos una instancia de FirebaseStorage y la asociamos a la variable declarada anteriormente
+        storage = FirebaseStorage.getInstance();
+        storageReference = storage.getReference();
+
+        //Firebase database
+        database = FirebaseDatabase.getInstance();
+        databaseReference = database.getReference(databasePath);
+
+        takePicture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                chooseImage();
+            }
+        });
+
+        uploadPicture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                uploadImage(editText, editTextLocation);
+            }
+        });
+
+        uploadPicture.setAlpha(0);
+
+        return view;
+    }
+
+    private void chooseImage() {
+        Intent intent = new Intent();
+        intent.setType("image/*");
+        intent.setAction(Intent.ACTION_GET_CONTENT);
+        startActivityForResult(Intent.createChooser(intent, "Select Picture"), PICK_IMAGE_REQUEST);
+    }
+
+    private void uploadImage(EditText editText, EditText editTextLocation) {
+        if (filePath != null) {
+            final ProgressDialog progressDialog = new ProgressDialog(getActivity());
+            progressDialog.setTitle("Uploading...");
+            progressDialog.show();
+
+            StorageReference ref = storageReference.child("images/"+ UUID.randomUUID().toString());
+            final String fileName = editText.getText().toString();
+            final String locationName = editTextLocation.getText().toString();
+
+            ref.putFile(filePath).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
+
+                @Override
+                public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
+
+                    ImageUploadInfo imageUploadInfo = new ImageUploadInfo(fileName, locationName, taskSnapshot.getMetadata().getReference().getDownloadUrl().toString(), false);
+
+                    String ImageUploadId = databaseReference.push().getKey();
+
+                    // Adding image upload id s child element into databaseReference.
+                    databaseReference.child(ImageUploadId).setValue(imageUploadInfo);
+
+                    progressDialog.dismiss();
+                    Toast.makeText(getActivity(), "Image Uploaded Succesfully", Toast.LENGTH_SHORT).show();
+                }
+            }).addOnFailureListener(new OnFailureListener() {
+                @Override
+                public void onFailure(@NonNull Exception e) {
+                    progressDialog.dismiss();
+                    Toast.makeText(getActivity(), "Upload Failed: "+e.getMessage(),Toast.LENGTH_SHORT).show();
+
+                }
+            }).addOnProgressListener(new OnProgressListener<UploadTask.TaskSnapshot>() {
+                @Override
+                public void onProgress(UploadTask.TaskSnapshot taskSnapshot) {
+                    double progress = (100.0*taskSnapshot.getBytesTransferred()/taskSnapshot.getTotalByteCount());
+                    progressDialog.setMessage("Uploaded "+(int)progress+"%");
+                }
+            });
+        }
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode == PICK_IMAGE_REQUEST && resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
+            filePath = data.getData();
+            try {
+                Bitmap bitmap = MediaStore.Images.Media.getBitmap(getActivity().getContentResolver(), filePath);
+                imageView.setImageBitmap(bitmap);
+
+                //boton upload visible
+                uploadPicture.animate().alpha(1.0f).setDuration(2000).start();
+
+                //asd
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     // TODO: Rename method, update argument and hook method into UI event

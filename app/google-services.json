@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "580077907684",
+    "firebase_url": "https://m8uf2examen-1c43a.firebaseio.com",
+    "project_id": "m8uf2examen-1c43a",
+    "storage_bucket": "m8uf2examen-1c43a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:580077907684:android:e4f08441d65ab599",
+        "android_client_info": {
+          "package_name": "com.example.isaac.m8uf2provafinal"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "580077907684-21f059kipfgudumkos0btb88e3e37t8m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAiyDnFZaErXhuehUhEyV5Ojewl4w1102E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "580077907684-21f059kipfgudumkos0btb88e3e37t8m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
